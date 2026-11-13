@@ -1,86 +1,123 @@
-# Contributing to Keemboll
+# Contributing to keemboll-bi
 
-Thanks for helping improve Keemboll! This guide applies to **every repository in the organization**. Individual projects may add their own `CONTRIBUTING.md` with project-specific rules (for example, how to add a skill to `keemboll-bi`); when they do, that file takes precedence for details and this one covers the rest.
+Thanks for helping improve `keemboll-bi`! This file covers what is specific to this repository. The general Keemboll guidelines (scope, quality bar, how to propose a new project, security reporting) are in the [organization contributing guide](https://github.com/Keemboll/.github/blob/main/CONTRIBUTING.md) and apply here too.
 
-By participating, you agree to keep discussions respectful and constructive. By contributing, you agree that your work is released under the licence of the repository you contribute to (Apache-2.0 unless stated otherwise).
+Two documents govern how this repository is edited — read them before your first pull request:
 
-## Our scope
-
-Keemboll hosts open-source BI projects: semantic modeling, DAX / SQL / M, analytics engineering, data quality, governance, documentation and delivery tooling. If your idea fits that scope, it is welcome — even if it targets a tool or platform we do not yet cover.
+- **[AGENTS.md](AGENTS.md)** — the authoritative editing rules, shared by humans and by every coding agent (structure, portability, versioning, content, shared example model).
+- **[CHANGELOG.md](CHANGELOG.md)** — what changed, and the list of examples still "To validate".
 
 ## Ways to contribute
 
-- **Report a bug** — wrong output, broken script, failing install.
-- **Request or propose a feature** — describe the BI task, who needs it, and what a good result looks like.
-- **Improve documentation** — clearer wording, better examples, missing prerequisites.
-- **Test on real projects** — tell us what worked or failed on your own models and data. This is among the most valuable contributions we can get.
-- **Propose a new project** — see below.
+- **Fix a rule** that is wrong or outdated for current Power BI / Fabric.
+- **Add or improve a skill**, a reference, a template or a subagent.
+- **Validate an example**: items under "To validate" in the changelog were not executed against a real model — confirming one (or correcting it) is a good first contribution.
+- **Report what happened on your project**: a skill that triggered wrongly, a rule that did not hold, a missing case.
+- **Improve the docs**: `README.md`, `docs/agents.md`, the `/keemboll-docs` guide.
 
-## Proposing a new project
+For anything larger than a small fix, open an issue first so we agree on the approach.
 
-Open a thread in [organization discussions](https://github.com/Keemboll/.github/discussions) with:
+## Development setup
 
-1. **Problem** — which BI task is painful today, and for whom
-2. **Scope** — what the project will and will not do
-3. **Platforms** — Power BI, Fabric, dbt, DuckDB, SQL engines, others
-4. **Maintainer** — who will own it
-5. **First deliverable** — the smallest useful version
+Requirements: Git and Python 3.8+ (standard library only — no Node, no external dependency).
 
-A project is accepted when it is useful on its own, documented, openly licensed and has a named maintainer.
-
-## Before you start
-
-1. Search the repository's existing issues and pull requests to avoid duplicates.
-2. For anything larger than a small fix, open an issue first so we can agree on the approach.
-3. Read the repository's `README.md` and, if present, `AGENTS.md` or other project guidelines.
-
-## Development workflow
-
-```bash
-git clone https://github.com/Keemboll/<repository>.git
-cd <repository>
+```powershell
+git clone https://github.com/Keemboll/keemboll-bi
+cd keemboll-bi
 git checkout -b my-change
-
-# make your changes, run the project's checks
-# (see the repository README for the exact command, e.g. python scripts/validate.py)
 ```
 
-Then open a pull request against `main`. CI must pass before review.
+Before every commit:
 
-## Quality bar (all projects)
-
-- **Correct** — code, queries and models must run and be valid. Verify on a real model or dataset whenever you can, and say when you could not.
-- **Specific** — state precisely what a feature does and does not cover.
-- **Safe** — no destructive operations without an explicit confirmation step; never commit credentials, tenant IDs or real customer data.
-- **Documented** — update the README, examples and changelog for any user-visible change.
-- **Portable** — prefer open formats and plain-text artifacts; avoid wording or code that only works with a single vendor or agent.
-- **Tested** — add or update tests when the repository has them.
-
-## Commits and pull requests
-
-- Keep commits and pull requests focused on one change.
-- Use clear commit messages. Some repositories (such as `keemboll-bi`) derive automatic version bumps from the **commit message prefix** — follow the convention in that repository, for example:
-
-```
-fix: correct time-intelligence pattern
-feat: add incremental-refresh review
-docs: clarify install steps
+```powershell
+python scripts/validate.py
+python -m unittest discover -s tests
 ```
 
-- Never edit generated files by hand (for example `marketplace.json` in `keemboll-bi`); CI regenerates them.
+The `validate` workflow runs the same checks on every pull request and every branch; it must pass before review.
 
-### Pull request checklist
+## Repository layout
 
-- [ ] The project's checks pass locally
+```
+keemboll-bi/
+├── .claude-plugin/
+│   └── marketplace.json          # plugin catalog ("keemboll-bi" marketplace), list generated
+├── plugins/
+│   └── keemboll-powerbi/
+│       ├── .claude-plugin/
+│       │   └── plugin.json       # plugin manifest (version!)
+│       ├── agents/               # subagents: analyst, modeler, report designer, tester, AI curator, ops, auditor
+│       ├── commands/
+│       │   └── keemboll-docs.md  # /keemboll-docs command (guide)
+│       └── skills/
+│           └── <skill-name>/
+│               ├── SKILL.md      # instructions + name/description frontmatter
+│               ├── references/   # details loaded on demand
+│               └── scripts/      # read-only Python scripts (lean.py)
+├── scripts/
+│   ├── validate.py               # repository consistency check
+│   ├── install.py                # installs the skills for a given agent
+│   ├── build_dist.py             # .zip archives and single file in dist/
+│   ├── generate_marketplace.py   # regenerates the plugin list
+│   └── bump_versions.py          # version bump (CI)
+├── tests/                        # script tests + sample PBIP project (fixture)
+├── docs/agents.md                # use with other agents
+├── templates/skill-template/     # skill skeleton to copy
+├── .claude/agents/               # maintenance roles (author, reviewer, DAX check, docs check, trend watch, release)
+├── AGENTS.md                     # rules for editing this repository, shared by all agents
+├── CLAUDE.md                     # imports AGENTS.md
+└── CHANGELOG.md
+```
+
+Each skill exists in one place only (`plugins/<plugin>/skills/`). The `plugins` list of `marketplace.json` is **generated** from the `plugin.json` files (`python scripts/generate_marketplace.py`); a GitHub Actions workflow (`.github/workflows/generate-marketplace.yml`), triggered by a push to `main`, regenerates and commits it when it changed. The header (`name`, `owner`, `metadata`) is edited by hand. A second workflow (`validate.yml`) runs the validation and the tests on every pull request and every branch.
+
+## Adding or changing a skill
+
+The full rules are in [AGENTS.md](AGENTS.md).
+
+1. Copy `templates/skill-template/` to `plugins/keemboll-powerbi/skills/<new-name>/`.
+2. Fill in `name` (same as the folder name, kebab-case) and `description` (when to use it — this is what triggers the skill).
+3. Keep `SKILL.md` short (< 300 lines); move details into `references/`. Write "the agent", never a product name. English only.
+4. Present the skill in `plugins/keemboll-powerbi/commands/keemboll-docs.md` (sections `skills` and `examples`) and in the table above.
+5. **Version**: bumped automatically after the push (patch, `feat` → minor, `!:` / `BREAKING CHANGE` → major) if you did not change it yourself in `plugin.json`; `marketplace.json` is resynced along the way.
+6. Add an entry to `CHANGELOG.md`.
+7. Validate, then publish:
+
+```powershell
+python scripts/validate.py
+python -m unittest discover -s tests
+git add .
+git commit -m "feat(powerbi): <summary>"
+git push
+```
+
+Without a version bump, Claude Code does not see the update.
+
+## Quality bar
+
+On top of the [organization quality bar](https://github.com/Keemboll/.github/blob/main/CONTRIBUTING.md#quality-bar-all-projects):
+
+- **Only state what is certain** about Power BI / Fabric. For anything that moves (preview features, limits, UI labels), say so and point to the Microsoft documentation.
+- **DAX, TMDL and M examples must be syntactically valid.** An example not executed against a real model goes under "To validate" in the changelog.
+- **English everywhere**: prose, comments, object names, file names.
+- **Portable**: write "the agent", never a product name; agent-specific content lives outside the skills (`commands/`, `agents/`, `.claude/`, `scripts/install.py`, `docs/agents.md`).
+- **No tenant or workspace identifiers, tokens, real e-mails or customer data**, even in examples.
+- **The author of a skill is not its reviewer.** The `.claude/agents/` role sheets (author, reviewer, DAX check, docs check, trend watch, release) describe the process.
+
+## Pull request checklist
+
+- [ ] `python scripts/validate.py` and `python -m unittest discover -s tests` pass
 - [ ] The change is focused and explained in the PR description
-- [ ] Documentation and changelog are updated if behaviour changed
-- [ ] Examples are marked as tested or untested
-- [ ] No secrets or private data are included
+- [ ] New or renamed skill: reflected in `commands/keemboll-docs.md` and in the README table
+- [ ] `CHANGELOG.md` has a dated entry; unexecuted examples are listed under "To validate"
+- [ ] Version handled: bumped in `plugin.json`, or left to the automatic bump (commit prefix)
+- [ ] `marketplace.json` untouched by hand (the plugin list is generated)
+- [ ] No secrets or private data
 
-## Reporting security issues
+## Security
 
-Please do **not** open a public issue for a security problem. Use GitHub's private vulnerability reporting (repository **Security** tab → *Report a vulnerability*) or contact the maintainer directly.
+Do not open a public issue for a security problem. Use GitHub's private vulnerability reporting (repository **Security** tab → *Report a vulnerability*) or contact the maintainer directly.
 
-## Questions
+## Questions and ideas
 
-Ask in [organization discussions](https://github.com/Keemboll/.github/discussions) or open an issue with the `question` label. Thanks for contributing!
+Open an issue, or use the [organization discussions](https://github.com/Keemboll/.github/discussions) for broader ideas, including proposals for new Keemboll BI projects.
