@@ -29,7 +29,7 @@ Each project is small, focused and independently usable. Together they cover the
 
 ## Roadmap
 
-- [ ] First tagged releases of `keemboll-bi`
+- [x] First tagged releases of `keemboll-bi`
 - [ ] Worked examples on real, public datasets
 - [ ] Additional BI projects (modeling, quality, documentation)
 - [ ] Shared conventions across repositories (see below)
